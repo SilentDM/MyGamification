@@ -1,210 +1,193 @@
-diff --git a/Daily b/Daily
-index 93b3570273b9c8c5e088d21f3d78187bc64fcf07..f2afcdcc2c2354b9d14a063a7ab20d1a09bbf339 100644
---- a/Daily
-+++ b/Daily
-@@ -1,21 +1,194 @@
-+import json
-+from datetime import date, datetime, timedelta
-+from pathlib import Path
+import json
+from datetime import date, datetime, timedelta
+from pathlib import Path
  import tkinter as tk
  from tkinter import messagebox
  
--points = 0
-+TASK_TARGET_HOURS = {
-+    "Workout": 1,
-+    "Study": 3,
-+    "Take care of my Dog": 3,
-+    "Others": 1,
-+}
-+
-+COMPLETION_LEVELS = {
-+    "Nothing": 0.0,
-+    "Half done": 0.5,
-+    "Fully complete": 1.0,
-+}
-+
-+DATA_FILE = Path("daily_scores.json")
-+
-+
-+def load_data() -> dict:
-+    if not DATA_FILE.exists():
-+        return {"days": {}}
-+
-+    try:
-+        with DATA_FILE.open("r", encoding="utf-8") as file:
-+            data = json.load(file)
-+            if isinstance(data, dict) and isinstance(data.get("days"), dict):
-+                return data
-+    except (json.JSONDecodeError, OSError):
-+        pass
-+
-+    return {"days": {}}
-+
-+
-+def save_data(data: dict) -> None:
-+    with DATA_FILE.open("w", encoding="utf-8") as file:
-+        json.dump(data, file, indent=2)
-+
-+
-+def task_score(task_name: str, level_name: str) -> int:
-+    target_hours = TASK_TARGET_HOURS[task_name]
-+    completion_factor = COMPLETION_LEVELS[level_name]
-+    return int(target_hours * 100 * completion_factor)
-+
-+
-+def parse_day(day_text: str) -> date:
-+    return datetime.strptime(day_text, "%Y-%m-%d").date()
-+
-+
-+def week_range(target_day: date) -> tuple[date, date]:
-+    start = target_day - timedelta(days=target_day.weekday())
-+    end = start + timedelta(days=6)
-+    return start, end
-+
-+
-+def total_for_period(data: dict, period: str, target_day: date) -> int:
-+    total = 0
-+    day_entries = data.get("days", {})
-+
-+    for day_text, entry in day_entries.items():
-+        current_day = parse_day(day_text)
-+
-+        if period == "week":
-+            start, end = week_range(target_day)
-+            if start <= current_day <= end:
-+                total += entry.get("total", 0)
-+        elif period == "month":
-+            if (
-+                current_day.year == target_day.year
-+                and current_day.month == target_day.month
-+            ):
-+                total += entry.get("total", 0)
-+
-+    return total
-+
-+
-+def on_save_day() -> None:
-+    today_key = date.today().isoformat()
-+    data = load_data()
-+
-+    daily_tasks = {}
-+    daily_total = 0
-+
-+    for task_name, var in task_vars.items():
-+        level = var.get()
-+        score = task_score(task_name, level)
-+        daily_tasks[task_name] = {
-+            "completion": level,
-+            "score": score,
-+            "target_hours": TASK_TARGET_HOURS[task_name],
-+        }
-+        daily_total += score
-+
-+    data["days"][today_key] = {
-+        "tasks": daily_tasks,
-+        "total": daily_total,
-+    }
-+
-+    save_data(data)
-+
-+    today = date.today()
-+    weekly_total = total_for_period(data, "week", today)
-+    monthly_total = total_for_period(data, "month", today)
-+
-+    daily_score_value.config(text=f"{daily_total} points")
-+    weekly_score_value.config(text=f"{weekly_total} points")
-+    monthly_score_value.config(text=f"{monthly_total} points")
-+
-+    details_lines = [f"{task}: {info['completion']} ({info['score']} pts)" for task, info in daily_tasks.items()]
-+    messagebox.showinfo(
-+        "Day saved",
-+        "Today's progress was saved.\n\n" + "\n".join(details_lines),
-+    )
-+
-+
-+def load_today_view() -> None:
-+    today_key = date.today().isoformat()
-+    data = load_data()
-+    today_entry = data.get("days", {}).get(today_key)
-+
-+    if today_entry:
-+        for task_name, var in task_vars.items():
-+            saved_level = today_entry.get("tasks", {}).get(task_name, {}).get("completion", "Nothing")
-+            if saved_level in COMPLETION_LEVELS:
-+                var.set(saved_level)
-+
-+    today = date.today()
-+    daily_total = today_entry.get("total", 0) if today_entry else 0
-+    weekly_total = total_for_period(data, "week", today)
-+    monthly_total = total_for_period(data, "month", today)
-+
-+    daily_score_value.config(text=f"{daily_total} points")
-+    weekly_score_value.config(text=f"{weekly_total} points")
-+    monthly_score_value.config(text=f"{monthly_total} points")
+TASK_TARGET_HOURS = {
+    "Workout": 1,
+    "Study": 3,
+    "Take care of my Dog": 3,
+    "Others": 1,
+}
+
+COMPLETION_LEVELS = {
+    "Nothing": 0.0,
+    "Half done": 0.5,
+    "Fully complete": 1.0,
+}
+
+DATA_FILE = Path("daily_scores.json")
+
+
+def load_data() -> dict:
+    if not DATA_FILE.exists():
+        return {"days": {}}
+
+    try:
+        with DATA_FILE.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+            if isinstance(data, dict) and isinstance(data.get("days"), dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+
+    return {"days": {}}
+
+
+def save_data(data: dict) -> None:
+    with DATA_FILE.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2)
+
+
+def task_score(task_name: str, level_name: str) -> int:
+    target_hours = TASK_TARGET_HOURS[task_name]
+    completion_factor = COMPLETION_LEVELS[level_name]
+    return int(target_hours * 100 * completion_factor)
+
+
+def parse_day(day_text: str) -> date:
+    return datetime.strptime(day_text, "%Y-%m-%d").date()
+
+
+def week_range(target_day: date) -> tuple[date, date]:
+    start = target_day - timedelta(days=target_day.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
+def total_for_period(data: dict, period: str, target_day: date) -> int:
+    total = 0
+    day_entries = data.get("days", {})
+
+    for day_text, entry in day_entries.items():
+        current_day = parse_day(day_text)
+
+        if period == "week":
+            start, end = week_range(target_day)
+            if start <= current_day <= end:
+                total += entry.get("total", 0)
+        elif period == "month":
+            if (
+                current_day.year == target_day.year
+                and current_day.month == target_day.month
+            ):
+                total += entry.get("total", 0)
+
+    return total
+
+
+def on_save_day() -> None:
+    today_key = date.today().isoformat()
+    data = load_data()
+
+    daily_tasks = {}
+    daily_total = 0
+
+    for task_name, var in task_vars.items():
+        level = var.get()
+        score = task_score(task_name, level)
+        daily_tasks[task_name] = {
+            "completion": level,
+            "score": score,
+            "target_hours": TASK_TARGET_HOURS[task_name],
+        }
+        daily_total += score
+
+    data["days"][today_key] = {
+        "tasks": daily_tasks,
+        "total": daily_total,
+    }
+
+    save_data(data)
+
+    today = date.today()
+    weekly_total = total_for_period(data, "week", today)
+    monthly_total = total_for_period(data, "month", today)
+
+    daily_score_value.config(text=f"{daily_total} points")
+    weekly_score_value.config(text=f"{weekly_total} points")
+    monthly_score_value.config(text=f"{monthly_total} points")
+
+    details_lines = [f"{task}: {info['completion']} ({info['score']} pts)" for task, info in daily_tasks.items()]
+    messagebox.showinfo(
+        "Day saved",
+        "Today's progress was saved.\n\n" + "\n".join(details_lines),
+    )
+
+
+def load_today_view() -> None:
+    today_key = date.today().isoformat()
+    data = load_data()
+    today_entry = data.get("days", {}).get(today_key)
+
+    if today_entry:
+        for task_name, var in task_vars.items():
+            saved_level = today_entry.get("tasks", {}).get(task_name, {}).get("completion", "Nothing")
+            if saved_level in COMPLETION_LEVELS:
+                var.set(saved_level)
+
+    today = date.today()
+    daily_total = today_entry.get("total", 0) if today_entry else 0
+    weekly_total = total_for_period(data, "week", today)
+    monthly_total = total_for_period(data, "month", today)
+
+    daily_score_value.config(text=f"{daily_total} points")
+    weekly_score_value.config(text=f"{weekly_total} points")
+    monthly_score_value.config(text=f"{monthly_total} points")
  
--def check_task():
--    global points
--    points += 10
--    score_label.config(text=f"Pontos: {points}")
--    messagebox.showinfo("Missão completa", "+10 XP")
+app = tk.Tk()
+app.title("Daily Task Gamifier")
+app.geometry("460x420")
+
+header = tk.Label(
+    app,
+    text="Mark your completion level for each task",
+    font=("Arial", 12, "bold"),
+)
+header.pack(pady=(10, 12))
+
+task_frame = tk.Frame(app)
+task_frame.pack(fill="x", padx=16)
+
+task_vars = {}
+
+for row, task_name in enumerate(TASK_TARGET_HOURS):
+    task_label = tk.Label(task_frame, text=f"{task_name} ({TASK_TARGET_HOURS[task_name]}h)")
+    task_label.grid(row=row, column=0, sticky="w", pady=6)
+
+    selected_level = tk.StringVar(value="Nothing")
+    task_vars[task_name] = selected_level
+
+    level_menu = tk.OptionMenu(task_frame, selected_level, *COMPLETION_LEVELS.keys())
+    level_menu.config(width=14)
+    level_menu.grid(row=row, column=1, sticky="e", padx=(20, 0))
+
+save_button = tk.Button(
+    app,
+    text="Save today's score",
+    command=on_save_day,
+    bg="#4CAF50",
+    fg="white",
+    padx=10,
+    pady=8,
+)
+save_button.pack(pady=12)
+
+score_frame = tk.Frame(app)
+score_frame.pack(fill="x", padx=16, pady=(8, 0))
+
+tk.Label(score_frame, text="Today:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w", pady=3)
+daily_score_value = tk.Label(score_frame, text="0 points")
+daily_score_value.grid(row=0, column=1, sticky="w", pady=3)
  
- app = tk.Tk()
--app.title("Sistema de Missões Diárias")
-+app.title("Daily Task Gamifier")
-+app.geometry("460x420")
-+
-+header = tk.Label(
-+    app,
-+    text="Mark your completion level for each task",
-+    font=("Arial", 12, "bold"),
-+)
-+header.pack(pady=(10, 12))
-+
-+task_frame = tk.Frame(app)
-+task_frame.pack(fill="x", padx=16)
-+
-+task_vars = {}
-+
-+for row, task_name in enumerate(TASK_TARGET_HOURS):
-+    task_label = tk.Label(task_frame, text=f"{task_name} ({TASK_TARGET_HOURS[task_name]}h)")
-+    task_label.grid(row=row, column=0, sticky="w", pady=6)
-+
-+    selected_level = tk.StringVar(value="Nothing")
-+    task_vars[task_name] = selected_level
-+
-+    level_menu = tk.OptionMenu(task_frame, selected_level, *COMPLETION_LEVELS.keys())
-+    level_menu.config(width=14)
-+    level_menu.grid(row=row, column=1, sticky="e", padx=(20, 0))
-+
-+save_button = tk.Button(
-+    app,
-+    text="Save today's score",
-+    command=on_save_day,
-+    bg="#4CAF50",
-+    fg="white",
-+    padx=10,
-+    pady=8,
-+)
-+save_button.pack(pady=12)
-+
-+score_frame = tk.Frame(app)
-+score_frame.pack(fill="x", padx=16, pady=(8, 0))
-+
-+tk.Label(score_frame, text="Today:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w", pady=3)
-+daily_score_value = tk.Label(score_frame, text="0 points")
-+daily_score_value.grid(row=0, column=1, sticky="w", pady=3)
+tk.Label(score_frame, text="This week:", font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="w", pady=3)
+weekly_score_value = tk.Label(score_frame, text="0 points")
+weekly_score_value.grid(row=1, column=1, sticky="w", pady=3)
  
--task = tk.Checkbutton(app, text="Treinar 20 min", command=check_task)
--task.pack()
-+tk.Label(score_frame, text="This week:", font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="w", pady=3)
-+weekly_score_value = tk.Label(score_frame, text="0 points")
-+weekly_score_value.grid(row=1, column=1, sticky="w", pady=3)
+tk.Label(score_frame, text="This month:", font=("Arial", 10, "bold")).grid(row=2, column=0, sticky="w", pady=3)
+monthly_score_value = tk.Label(score_frame, text="0 points")
+monthly_score_value.grid(row=2, column=1, sticky="w", pady=3)
  
--score_label = tk.Label(app, text="Pontos: 0")
--score_label.pack()
-+tk.Label(score_frame, text="This month:", font=("Arial", 10, "bold")).grid(row=2, column=0, sticky="w", pady=3)
-+monthly_score_value = tk.Label(score_frame, text="0 points")
-+monthly_score_value.grid(row=2, column=1, sticky="w", pady=3)
- 
-+load_today_view()
+load_today_view()
  app.mainloop()
