@@ -1,0 +1,21 @@
+import tkinter as tk
+from tkinter import messagebox
+
+points = 0
+
+def check_task():
+    global points
+    points += 10
+    score_label.config(text=f"Pontos: {points}")
+    messagebox.showinfo("Missão completa", "+10 XP")
+
+app = tk.Tk()
+app.title("Sistema de Missões Diárias")
+
+task = tk.Checkbutton(app, text="Treinar 20 min", command=check_task)
+task.pack()
+
+score_label = tk.Label(app, text="Pontos: 0")
+score_label.pack()
+
+app.mainloop()
